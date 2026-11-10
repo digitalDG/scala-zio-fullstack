@@ -1,0 +1,24 @@
+# Scala / sbt
+backend/target/
+backend/project/target/
+backend/project/project/
+backend/.bsp/
+backend/.bloop/
+.metals/
+.bloop/
+.bsp/
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# Editors / OS
+.vscode/*
+!.vscode/settings.json
+.idea/
+.DS_Store
+
+# Local secrets
+.env
+.env.*
+!.env.example

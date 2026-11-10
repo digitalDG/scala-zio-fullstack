@@ -1,0 +1,6 @@
+# Store text files with LF line endings, whatever the platform, so Docker builds, CI and the
+# generated API files behave the same everywhere.
+* text=auto eol=lf
+
+*.png binary
+*.jar binary

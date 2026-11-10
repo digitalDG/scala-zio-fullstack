@@ -1,0 +1,44 @@
+# Configuration comes from a git-ignored `.env` file next to this one (copy `.env.example`).
+# Compose refuses to start without DB_PASSWORD rather than falling back to a known value.
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: todo
+      POSTGRES_USER: ${DB_USER:-todo}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env (see .env.example)}
+    ports:
+      # Reachable from this machine only, so `sbt run` can use it during development.
+      - "127.0.0.1:${DB_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-todo} -d todo"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  backend:
+    build: ./backend
+    # Every backend setting in .env is passed through, so it's all configurable in one place.
+    env_file: .env
+    environment:
+      # Inside Docker the database is the `db` service, not localhost.
+      DB_URL: jdbc:postgresql://db:5432/todo
+      HTTP_PORT: "8080"
+    ports:
+      - "127.0.0.1:${API_PORT:-8080}:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "127.0.0.1:${APP_PORT:-3000}:80"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
