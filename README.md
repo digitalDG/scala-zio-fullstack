@@ -8,7 +8,8 @@ on **PostgreSQL**. The frontend is **React + TypeScript**, with API
 types generated from the Scala code so the two can't drift apart.
 
 **Live demo: https://frontend-production-dc1a2c7f.up.railway.app**
-(register an account to try it, or browse the API at
+(click **Try the demo** to look around without signing up, or
+browse the API at
 [`/docs`](https://frontend-production-dc1a2c7f.up.railway.app/docs))
 
 ![The todo list](docs/screenshot.png)
@@ -19,6 +20,9 @@ types generated from the Scala code so the two can't drift apart.
   device at once. Passwords are hashed with bcrypt, sessions are
   stored server-side and carried in an `HttpOnly` cookie, and
   repeated failed sign-ins are locked out.
+- **One-click demo:** a shared demo account filled with sample
+  todos, reset on a schedule, so visitors can explore without
+  registering.
 - **Private data:** every query is scoped to the signed-in user.
   Another user's todo is reported as "not found".
 - **Todos:** create, edit, complete and delete, with notes, a
@@ -109,7 +113,7 @@ without the frontend being updated.
 | Error-accumulating validation | [Validated](backend/src/main/scala/com/example/todo/domain/Validated.scala) | `zipPar` collects every field error; ZIO's `Zippable` flattens nested tuples at the type level |
 | Scala 3 enums with derived instances | [LabeledEnum](backend/src/main/scala/com/example/todo/domain/LabeledEnum.scala) | One mix-in gives an enum its JSON codec, OpenAPI schema and query-parameter codec through companion givens |
 | Type class derivation | [ApiModels](backend/src/main/scala/com/example/todo/http/ApiModels.scala) | `derives JsonCodec, Schema` on case classes |
-| Exhaustive matching on a sealed hierarchy | [ApiModels](backend/src/main/scala/com/example/todo/http/ApiModels.scala) (`ErrorResponse.from`) | Adding an `AppError` case won't compile until it's mapped to an HTTP response |
+| Exhaustive matching on a sealed hierarchy | [ApiModels](backend/src/main/scala/com/example/todo/http/ApiModels.scala) (`ErrorResponse.from`) | Adding an `AppError` case won't compile until it's mapped to an HTTP response. Scala only *warns* about a missing case by default, so `build.sbt` promotes that warning (E029) to an error |
 | Type-checked SQL | [TodoRepository](backend/src/main/scala/com/example/todo/db/TodoRepository.scala) | Quill turns quoted Scala into SQL, including Postgres arrays, `ILIKE` and nulls-last sorting; the tests run it against real Postgres |
 | Testable time | [SessionService](backend/src/main/scala/com/example/todo/auth/SessionService.scala), [SessionSpec](backend/src/test/scala/com/example/todo/SessionSpec.scala) | Time comes from ZIO's `Clock`, so session-expiry and lockout-window tests move `TestClock` forward instead of sleeping |
 | Blocking isolation | [PasswordHasher](backend/src/main/scala/com/example/todo/auth/PasswordHasher.scala) | bcrypt and JDBC run on the blocking pool, keeping the async threads free |
@@ -194,6 +198,9 @@ and `.env.example` lists every option.
 | `LOGIN_MAX_ATTEMPTS_PER_ACCOUNT` | `5` |
 | `LOGIN_MAX_ATTEMPTS_PER_IP`      | `20` |
 | `LOGIN_WINDOW_MINUTES`           | `15` |
+| `DEMO_ENABLED`                   | `false` (Docker Compose sets `true`) |
+| `DEMO_USERNAME`                  | `demo` |
+| `DEMO_RESET_INTERVAL_HOURS`      | `6` |
 | `APP_PORT`, `API_PORT`, `DB_PORT`| `3000`, `8080`, `5432` (Docker Compose host ports) |
 
 Leave `HTTP_SECURE_COOKIES` on. Browsers already accept secure
@@ -244,6 +251,7 @@ flowchart LR
    DB_USER=${{Postgres.PGUSER}}
    DB_PASSWORD=${{Postgres.PGPASSWORD}}
    DB_MAX_POOL_SIZE=3
+   DEMO_ENABLED=true
    ```
 
 5. **Add the frontend:** *+ New → GitHub Repo*, same repository.
@@ -282,7 +290,9 @@ curl -b jar http://localhost:8080/api/todos
 | POST   | `/api/auth/register` | Create an account and sign in |
 | POST   | `/api/auth/login` | Sign in; 429 after too many failures |
 | POST   | `/api/auth/logout` | End this session |
-| POST   | `/api/auth/logout-all` | End all of the user's sessions |
+| POST   | `/api/auth/logout-all` | End all of the user's sessions (403 for the demo account) |
+| GET    | `/api/auth/demo` | Whether the demo account is enabled |
+| POST   | `/api/auth/demo` | Sign in to the demo account (404 if disabled) |
 | GET    | `/api/auth/me` | The signed-in user |
 | GET    | `/api/todos` | List, with `completed`, `priority`, `tag`, `q`, `sort`, `order`, `page`, `pageSize` |
 | POST   | `/api/todos` | Create |
@@ -307,8 +317,8 @@ Errors always look like this:
 ```
 
 `code` is one of `validation_failed`, `bad_request`,
-`unauthorized`, `not_found`, `conflict`, `too_many_requests` or
-`internal_error`.
+`unauthorized`, `forbidden`, `not_found`, `conflict`,
+`too_many_requests` or `internal_error`.
 
 ## Testing
 
@@ -323,8 +333,9 @@ cd frontend && npm test
 - **HTTP API:** real requests through the real routes,
   serialization and error handling, with in-memory repositories.
   Covers auth, the session cookie's security attributes, sign-out,
-  CRUD, users being isolated from each other, filtering, paging
-  and every error path.
+  the demo account (sample data, resets, its lockout immunity and
+  restrictions), CRUD, users being isolated from each other,
+  filtering, paging and every error path.
 - **Repositories:** the actual SQL against PostgreSQL 18 in Docker,
   using Testcontainers. These skip themselves when Docker isn't
   running, and always run in CI.
@@ -344,6 +355,7 @@ backend/src/main/scala/com/example/todo/
 ├── config/                # typed configuration
 ├── domain/                # types, validation, errors
 ├── auth/                  # passwords, sessions, rate limiting
+├── demo/                  # the shared demo account
 ├── todo/                  # todo use cases
 ├── db/                    # Quill repositories, migrations
 └── http/                  # endpoints, routes, API models
@@ -366,7 +378,8 @@ which means:
 
 - signing out ends the session immediately, and a copied cookie
   stops working
-- "Sign out everywhere" ends all of a user's sessions at once
+- "Sign out of all devices" (in the account menu) ends all of a
+  user's sessions at once
 - expired sessions are purged by a background job
 
 **The session can't be stolen by a script.** The token travels in
@@ -401,6 +414,14 @@ set too.
 git-ignored `.env` file with no fallback value, and it's a
 `Config.Secret`, so it's redacted if the config is ever logged.
 Ports are bound to `127.0.0.1` only.
+
+**A demo account that can't be hijacked or locked.** The demo
+account has no password anyone knows: each reset sets a new random
+one that is never stored or shown, so the only way in is the
+*Try the demo* button. That also makes it immune to the sign-in
+lockout, which counts failed passwords. Because every visitor
+shares it, the API refuses (403) to let it sign out all sessions,
+which would sign out everyone else.
 
 **Known limits.** The lockout counters are kept in memory, so they
 reset on restart and aren't shared if you run several backend

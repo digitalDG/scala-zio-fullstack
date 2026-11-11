@@ -31,6 +31,11 @@ final class InMemoryUserRepository(state: Ref[Map[UserId, User]], ids: Ref[Long]
 
   def findById(id: UserId): UIO[Option[User]] = state.get.map(_.get(id))
 
+  def setPasswordHash(id: UserId, hash: PasswordHash): UIO[Unit] =
+    state.update(users =>
+      users.get(id).fold(users)(u => users.updated(id, u.copy(passwordHash = hash)))
+    )
+
 object InMemoryUserRepository:
   val layer: ULayer[UserRepository] = ZLayer {
     for
@@ -104,6 +109,12 @@ final class InMemoryTodoRepository(state: Ref[Map[TodoId, Todo]], ids: Ref[Long]
           )
           (Some(updated), todos + (id -> updated))
         case None => (None, todos)
+    }
+
+  def deleteAll(owner: UserId): UIO[Long] =
+    state.modify { todos =>
+      val (mine, others) = todos.partition((_, t) => t.ownerId == owner)
+      (mine.size.toLong, others)
     }
 
   def delete(owner: UserId, id: TodoId): UIO[Boolean] =

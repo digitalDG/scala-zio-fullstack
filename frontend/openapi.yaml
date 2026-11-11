@@ -28,6 +28,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: ''
           content:
@@ -86,6 +92,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '401':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
           description: ''
           content:
             application/json:
@@ -156,6 +168,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: ''
           content:
@@ -215,6 +233,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: ''
           content:
@@ -268,6 +292,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: ''
           content:
@@ -295,6 +325,123 @@ paths:
       security:
       - {}
       - apiKeyAuth: []
+  /api/auth/demo:
+    get:
+      tags:
+      - auth
+      summary: Whether the shared demo account is available
+      operationId: getApiAuthDemo
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DemoInfoResponse'
+        '400':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags:
+      - auth
+      summary: Sign in to the shared demo account (404 if it isn't enabled)
+      operationId: postApiAuthDemo
+      responses:
+        '200':
+          description: ''
+          headers:
+            Set-Cookie:
+              description: The session cookie
+              required: false
+              schema:
+                type: array
+                items:
+                  type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/auth/me:
     get:
       tags:
@@ -315,6 +462,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '401':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
           description: ''
           content:
             application/json:
@@ -423,6 +576,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: ''
           content:
@@ -475,6 +634,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '401':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
           description: ''
           content:
             application/json:
@@ -541,6 +706,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: ''
           content:
@@ -590,6 +761,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '401':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
           description: ''
           content:
             application/json:
@@ -650,6 +827,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '401':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
           description: ''
           content:
             application/json:
@@ -720,6 +903,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: ''
           content:
@@ -770,6 +959,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '401':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
           description: ''
           content:
             application/json:
@@ -841,6 +1036,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: ''
           content:
@@ -870,6 +1071,18 @@ paths:
       - apiKeyAuth: []
 components:
   schemas:
+    DemoInfoResponse:
+      title: DemoInfoResponse
+      type: object
+      required:
+      - enabled
+      - resetIntervalHours
+      properties:
+        enabled:
+          type: boolean
+        resetIntervalHours:
+          type: integer
+          format: int32
     ErrorCode:
       title: ErrorCode
       type: string
@@ -880,6 +1093,7 @@ components:
       - not_found
       - conflict
       - too_many_requests
+      - forbidden
       - internal_error
     ErrorResponse:
       title: ErrorResponse
@@ -1089,6 +1303,7 @@ components:
       - username
       - email
       - createdAt
+      - demo
       properties:
         id:
           type: integer
@@ -1100,6 +1315,8 @@ components:
         createdAt:
           type: string
           format: date-time
+        demo:
+          type: boolean
   securitySchemes:
     apiKeyAuth:
       type: apiKey

@@ -5,6 +5,8 @@ import { useDeleteTodo, useTags, useTodoList, useTodoStats, useToggleTodo, type 
 import { useAuth } from "../auth/AuthContext";
 import { TodoDialog } from "../components/TodoDialog";
 import { TodoItem } from "../components/TodoItem";
+import { UserMenu } from "../components/UserMenu";
+import { useDemoInfo } from "../api/demo";
 import { Alert, Button, cx, Input, Select, Spinner } from "../components/ui";
 import { filtersFromParams, filtersToParams } from "../lib/filters";
 
@@ -36,25 +38,11 @@ export function TodosPage() {
             <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-600 text-sm font-bold text-white">✓</span>
             <span className="font-semibold text-slate-900">Todo</span>
           </div>
-          <div className="flex items-center gap-3 text-sm">
-            <span className="hidden text-slate-600 sm:inline">
-              Signed in as <span className="font-medium text-slate-900">{user?.username}</span>
-            </span>
-            <Button
-              variant="ghost"
-              className="hidden sm:inline-flex"
-              onClick={() => {
-                if (window.confirm("Sign out on all your devices?")) void logoutEverywhere();
-              }}
-            >
-              Sign out everywhere
-            </Button>
-            <Button variant="ghost" onClick={logout}>
-              Sign out
-            </Button>
-          </div>
+          {user && <UserMenu user={user} onSignOut={() => void logout()} onSignOutEverywhere={() => void logoutEverywhere()} />}
         </div>
       </header>
+
+      {user?.demo && <DemoBanner />}
 
       <main className="mx-auto max-w-4xl space-y-6 px-4 py-8">
         <div className="flex flex-wrap items-end justify-between gap-4">
@@ -107,6 +95,18 @@ export function TodosPage() {
       </main>
 
       {editing !== undefined && <TodoDialog todo={editing} onClose={() => setEditing(undefined)} />}
+    </div>
+  );
+}
+
+function DemoBanner() {
+  const { data: demo } = useDemoInfo();
+  return (
+    <div className="border-b border-amber-200 bg-amber-50">
+      <p className="mx-auto max-w-4xl px-4 py-2 text-sm text-amber-900">
+        You're exploring the <span className="font-semibold">shared demo account</span>. Other visitors see the same todos, and
+        everything resets {demo ? `every ${demo.resetIntervalHours} hours` : "regularly"}.
+      </p>
     </div>
   );
 }

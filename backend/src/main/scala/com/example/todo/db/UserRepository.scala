@@ -13,6 +13,7 @@ trait UserRepository:
   def create(user: NewUser): IO[AppError.Conflict, User]
   def findByUsername(username: Username): UIO[Option[User]]
   def findById(id: UserId): UIO[Option[User]]
+  def setPasswordHash(id: UserId, hash: PasswordHash): UIO[Unit]
 
 object UserRepository:
   val postgres: URLayer[Quill.Postgres[SnakeCase], UserRepository] =
@@ -67,3 +68,6 @@ final class PostgresUserRepository(quill: Quill.Postgres[SnakeCase]) extends Use
 
   def findById(id: UserId): UIO[Option[User]] =
     run(users.filter(_.id == lift(id.value))).orDie.map(_.headOption.map(_.toDomain))
+
+  def setPasswordHash(id: UserId, hash: PasswordHash): UIO[Unit] =
+    run(users.filter(_.id == lift(id.value)).update(_.passwordHash -> lift(hash.value))).orDie.unit

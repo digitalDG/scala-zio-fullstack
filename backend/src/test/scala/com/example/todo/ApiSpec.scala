@@ -3,6 +3,7 @@ package com.example.todo
 import com.example.todo.auth.*
 import com.example.todo.config.*
 import com.example.todo.db.HealthCheck
+import com.example.todo.demo.DemoService
 import com.example.todo.domain.Priority
 import com.example.todo.http.*
 import com.example.todo.todo.TodoService
@@ -84,11 +85,12 @@ object ApiSpec extends ZIOSpecDefault:
     HttpConfig(),
     DbConfig(password = Config.Secret("unused")),
     SessionConfig(ttlMinutes = 60),
-    LoginConfig(maxAttemptsPerAccount = 5, maxAttemptsPerIp = 20, windowMinutes = 15)
+    LoginConfig(maxAttemptsPerAccount = 5, maxAttemptsPerIp = 20, windowMinutes = 15),
+    DemoConfig(enabled = true, username = "demo", resetIntervalHours = 6)
   )
 
   /** The production wiring, except storage is in memory and bcrypt runs at its cheapest cost. */
-  private val testLayer: ULayer[ApiRoutes] = ZLayer.make[ApiRoutes](
+  private val testLayer: ULayer[ApiRoutes & DemoService] = ZLayer.make[ApiRoutes & DemoService](
     ZLayer.succeed(testConfig),
     InMemoryUserRepository.layer,
     InMemoryTodoRepository.layer,
@@ -97,11 +99,32 @@ object ApiSpec extends ZIOSpecDefault:
     SessionService.live,
     LoginRateLimiter.live,
     AuthService.live,
+    DemoService.live,
     TodoService.live,
     alwaysHealthy,
     SessionCookie.layer,
     ApiRoutes.layer
   )
+
+  /** The same wiring with the demo account switched off. */
+  private val demoDisabled: ULayer[ApiRoutes] = ZLayer.make[ApiRoutes](
+    ZLayer.succeed(testConfig.copy(demo = DemoConfig(enabled = false))),
+    InMemoryUserRepository.layer,
+    InMemoryTodoRepository.layer,
+    InMemorySessionRepository.asRepository,
+    PasswordHasher.fast,
+    SessionService.live,
+    LoginRateLimiter.live,
+    AuthService.live,
+    DemoService.live,
+    TodoService.live,
+    alwaysHealthy,
+    SessionCookie.layer,
+    ApiRoutes.layer
+  )
+
+  private def demoSession(c: Client): Task[String] =
+    c.send(Method.POST, "/api/auth/demo").flatMap(_.session)
 
   private def login(c: Client, name: String, password: String, ip: String = "10.0.0.1") =
     c.send(
@@ -112,6 +135,77 @@ object ApiSpec extends ZIOSpecDefault:
     )
 
   def spec = suite("HTTP API")(
+    suite("demo account")(
+      test("is advertised, and one click signs in with sample todos") {
+        for
+          c       <- client
+          info    <- c.send(Method.GET, "/api/auth/demo").flatMap(_.as[DemoInfoResponse])
+          session <- demoSession(c)
+          me      <- c.get("/api/auth/me", session).flatMap(_.as[UserResponse])
+          todos   <- c.get("/api/todos", session).flatMap(_.as[TodoPageResponse])
+          stats   <- c.get("/api/todos/stats", session).flatMap(_.as[TodoStatsResponse])
+        yield assertTrue(
+          info == DemoInfoResponse(enabled = true, resetIntervalHours = 6),
+          me.username == "demo",
+          me.demo,
+          todos.total == 8L,
+          stats.overdue == 1L
+        )
+      },
+      test("has no password anyone knows, so the lockout can't block it") {
+        for
+          c       <- client
+          _       <- demoSession(c)
+          guesses <- login(c, "demo", "password123").repeatN(9)
+          stillIn <- c.send(Method.POST, "/api/auth/demo")
+        yield assertTrue(
+          guesses.status == StatusCode.TooManyRequests,
+          stillIn.status == StatusCode.Ok
+        )
+      },
+      test("can't sign out every other visitor") {
+        for
+          c       <- client
+          visitor <- demoSession(c)
+          other   <- demoSession(c)
+          reply   <- c.send(Method.POST, "/api/auth/logout-all", token = Some(visitor))
+          error   <- reply.as[ErrorResponse]
+          stillIn <- c.get("/api/auth/me", other)
+        yield assertTrue(
+          reply.status == StatusCode.Forbidden,
+          error.code == ErrorCode.Forbidden,
+          stillIn.status == StatusCode.Ok
+        )
+      },
+      test("a reset wipes visitors' changes and restores the samples") {
+        for
+          c       <- client
+          session <- demoSession(c)
+          _       <- c.create(session, todo("Left behind by a visitor"))
+          before  <- c.get("/api/todos", session).flatMap(_.as[TodoPageResponse])
+          _       <- ZIO.serviceWithZIO[DemoService](_.reset)
+          after   <- c.get("/api/todos", session).flatMap(_.as[TodoPageResponse])
+        yield assertTrue(
+          before.total == 9L,
+          after.total == 8L,
+          !after.items.exists(_.title == "Left behind by a visitor")
+        )
+      },
+      test("regular users are never flagged as demo") {
+        for
+          c       <- client
+          session <- c.register("regular")
+          me      <- c.get("/api/auth/me", session).flatMap(_.as[UserResponse])
+        yield assertTrue(!me.demo)
+      },
+      test("is a 404 when disabled") {
+        for
+          c     <- client
+          info  <- c.send(Method.GET, "/api/auth/demo").flatMap(_.as[DemoInfoResponse])
+          reply <- c.send(Method.POST, "/api/auth/demo")
+        yield assertTrue(!info.enabled, reply.status == StatusCode.NotFound)
+      }.provideLayer(demoDisabled)
+    ),
     suite("auth")(
       test("registering returns 201 and a session cookie that identifies the new user") {
         for

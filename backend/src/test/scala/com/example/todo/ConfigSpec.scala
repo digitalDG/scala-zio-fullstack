@@ -20,7 +20,8 @@ object ConfigSpec extends ZIOSpecDefault:
         config.db.url == "jdbc:postgresql://localhost:5432/todo",
         config.db.maxPoolSize == 10,
         config.session == SessionConfig(),
-        config.login == LoginConfig()
+        config.login == LoginConfig(),
+        !config.demo.enabled
       )
     },
     test("any setting can be overridden by its environment variable") {

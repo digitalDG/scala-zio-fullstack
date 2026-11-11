@@ -13,6 +13,7 @@ trait TodoRepository:
   def insert(owner: UserId, draft: TodoDraft, now: Instant): UIO[Todo]
   def update(owner: UserId, id: TodoId, draft: TodoDraft, now: Instant): UIO[Option[Todo]]
   def delete(owner: UserId, id: TodoId): UIO[Boolean]
+  def deleteAll(owner: UserId): UIO[Long]
   def stats(owner: UserId, today: LocalDate): UIO[TodoStats]
   def tags(owner: UserId): UIO[List[TodoTag]]
 
@@ -139,6 +140,9 @@ final class PostgresTodoRepository(quill: Quill.Postgres[SnakeCase]) extends Tod
   def delete(owner: UserId, id: TodoId): UIO[Boolean] =
     run(todos.filter(t => t.id == lift(id.value) && t.ownerId == lift(owner.value)).delete).orDie
       .map(_ > 0)
+
+  def deleteAll(owner: UserId): UIO[Long] =
+    run(todos.filter(_.ownerId == lift(owner.value)).delete).orDie
 
   def stats(owner: UserId, today: LocalDate): UIO[TodoStats] =
     val total     = run(todos.filter(_.ownerId == lift(owner.value)).size)

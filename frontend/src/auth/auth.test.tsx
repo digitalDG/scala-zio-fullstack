@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { AuthProvider, useAuth } from "./AuthContext";
 
-const user = { id: 1, username: "alice", email: "alice@example.com", createdAt: "2026-01-01T00:00:00Z" };
+const user = { id: 1, username: "alice", email: "alice@example.com", createdAt: "2026-01-01T00:00:00Z", demo: false };
 
 function json(status: number, body?: unknown) {
   return new Response(body === undefined ? null : JSON.stringify(body), {

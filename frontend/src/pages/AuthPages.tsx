@@ -1,6 +1,7 @@
 import { useState, type FormEvent, type ReactNode } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { ApiError } from "../api/client";
+import { useDemoInfo } from "../api/demo";
 import { useAuth } from "../auth/AuthContext";
 import { Alert, Button, Field, Input } from "../components/ui";
 
@@ -46,12 +47,17 @@ function useSubmit(action: () => Promise<void>) {
 }
 
 export function LoginPage() {
-  const { user, login } = useAuth();
+  const { user, login, tryDemo } = useAuth();
   const navigate = useNavigate();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const { busy, error, onSubmit } = useSubmit(async () => {
     await login({ username, password });
+    navigate("/");
+  });
+  const { data: demo } = useDemoInfo();
+  const demoSignIn = useSubmit(async () => {
+    await tryDemo();
     navigate("/");
   });
 
@@ -88,6 +94,23 @@ export function LoginPage() {
           {busy ? "Signing in…" : "Sign in"}
         </Button>
       </form>
+
+      {demo?.enabled && (
+        <form onSubmit={demoSignIn.onSubmit} className="mt-6 space-y-3">
+          <div className="flex items-center gap-3 text-xs uppercase tracking-wide text-slate-400">
+            <span className="h-px flex-1 bg-slate-200" />
+            or
+            <span className="h-px flex-1 bg-slate-200" />
+          </div>
+          {demoSignIn.error && <Alert>{demoSignIn.error}</Alert>}
+          <Button type="submit" variant="secondary" className="w-full" disabled={demoSignIn.busy}>
+            {demoSignIn.busy ? "Opening the demo…" : "Try the demo, no sign-up needed"}
+          </Button>
+          <p className="text-center text-xs text-slate-500">
+            A shared account with sample todos. It resets every {demo.resetIntervalHours} hours.
+          </p>
+        </form>
+      )}
     </AuthCard>
   );
 }

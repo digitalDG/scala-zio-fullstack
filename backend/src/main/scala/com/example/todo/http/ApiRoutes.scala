@@ -2,6 +2,7 @@ package com.example.todo.http
 
 import com.example.todo.auth.{AuthResult, AuthService}
 import com.example.todo.db.HealthCheck
+import com.example.todo.demo.DemoService
 import com.example.todo.domain.*
 import com.example.todo.todo.TodoService
 import sttp.model.headers.CookieValueWithMeta
@@ -20,7 +21,8 @@ final class ApiRoutes(
   authService: AuthService,
   todoService: TodoService,
   health: HealthCheck,
-  session: SessionCookie
+  session: SessionCookie,
+  demo: DemoService
 ):
   import ApiRoutes.*
 
@@ -52,17 +54,35 @@ final class ApiRoutes(
     ZIO.foreachDiscard(token)(authService.logout).as(session.cleared)
   }
 
+  /** Refused for the shared demo account: one visitor mustn't sign everyone else out. */
   private val logoutEverywhere: ZServerEndpoint[Any, Any] = Endpoints.logoutEverywhere
     .zServerSecurityLogic(authenticate)
-    .serverLogic(user => _ => authService.logoutEverywhere(user).as(session.cleared))
+    .serverLogic { user => _ =>
+      val endAll =
+        if demo.isDemo(user.username) then
+          ZIO.fail(AppError.Forbidden("The shared demo account can't sign out other visitors"))
+        else authService.logoutEverywhere(user)
+      endAll.as(session.cleared).toApi
+    }
+
+  private val demoInfo: ZServerEndpoint[Any, Any] = Endpoints.demoInfo.zServerLogic { _ =>
+    ZIO.succeed(DemoInfoResponse(demo.enabled, demo.resetIntervalHours))
+  }
+
+  private val demoSignIn: ZServerEndpoint[Any, Any] = Endpoints.demoSignIn.zServerLogic { _ =>
+    demo.signIn.map(signedIn).toApi
+  }
 
   /** The token goes only into the HttpOnly cookie, never into the response body. */
   private def signedIn(result: AuthResult): (CookieValueWithMeta, UserResponse) =
-    (session.issue(result.session.value), UserResponse.from(result.user))
+    (session.issue(result.session.value), userResponse(result.user))
+
+  private def userResponse(user: User): UserResponse =
+    UserResponse.from(user, demo = demo.isDemo(user.username))
 
   private val me: ZServerEndpoint[Any, Any] = Endpoints.me
     .zServerSecurityLogic(authenticate)
-    .serverLogic(user => _ => authService.currentUser(user).map(UserResponse.from).toApi)
+    .serverLogic(user => _ => authService.currentUser(user).map(userResponse).toApi)
 
   // ---- Todos ---------------------------------------------------------------------------------
 
@@ -127,6 +147,8 @@ final class ApiRoutes(
     login,
     logout,
     logoutEverywhere,
+    demoInfo,
+    demoSignIn,
     me,
     listTodos,
     todoStats,
@@ -139,7 +161,10 @@ final class ApiRoutes(
   )
 
 object ApiRoutes:
-  val layer: URLayer[AuthService & TodoService & HealthCheck & SessionCookie, ApiRoutes] =
+  val layer: URLayer[
+    AuthService & TodoService & HealthCheck & SessionCookie & DemoService,
+    ApiRoutes
+  ] =
     ZLayer.derive[ApiRoutes]
 
   private def validate[A](validated: Validated[A]): IO[AppError.InvalidInput, A] =

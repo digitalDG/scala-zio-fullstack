@@ -32,7 +32,8 @@ object PostgresRepositorySpec extends ZIOSpecDefault:
           HttpConfig(),
           DbConfig(c.jdbcUrl, c.username, Config.Secret(c.password), maxPoolSize = 4),
           SessionConfig(),
-          LoginConfig()
+          LoginConfig(),
+          DemoConfig()
         )
       )
   }
@@ -155,6 +156,27 @@ object PostgresRepositorySpec extends ZIOSpecDefault:
         tags.map(_.value) == List("x", "y"),
         !notMine,
         mine
+      )
+    },
+    test("a password hash can be replaced, and one user's todos deleted in bulk") {
+      for
+        users  <- ZIO.service[UserRepository]
+        repo   <- ZIO.service[TodoRepository]
+        owner  <- users.create(newUser("pg_gina"))
+        other  <- users.create(newUser("pg_hal"))
+        _      <- users.setPasswordHash(owner.id, PasswordHash("new-hash"))
+        reread <- users.findById(owner.id)
+        _      <- repo.insert(owner.id, draft("one"), now)
+        _      <- repo.insert(owner.id, draft("two"), now)
+        _      <- repo.insert(other.id, draft("not mine"), now)
+        gone   <- repo.deleteAll(owner.id)
+        mine   <- repo.list(owner.id, TodoQuery())
+        theirs <- repo.list(other.id, TodoQuery())
+      yield assertTrue(
+        reread.map(_.passwordHash.value).contains("new-hash"),
+        gone == 2L,
+        mine.total == 0L,
+        theirs.total == 1L
       )
     },
     test("sessions are found until they expire, and can be revoked") {

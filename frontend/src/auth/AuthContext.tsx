@@ -8,6 +8,8 @@ interface AuthState {
   loading: boolean;
   login: (body: Schemas["LoginRequest"]) => Promise<void>;
   register: (body: Schemas["RegisterRequest"]) => Promise<void>;
+  /** Signs in to the shared demo account, no password needed. */
+  tryDemo: () => Promise<void>;
   logout: () => Promise<void>;
   /** Ends the user's sessions on every device, not just this one. */
   logoutEverywhere: () => Promise<void>;
@@ -49,6 +51,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       register: async (body) => {
         queryClient.setQueryData(meKey, await unwrap(client.POST("/api/auth/register", { body })));
+      },
+      tryDemo: async () => {
+        queryClient.setQueryData(meKey, await unwrap(client.POST("/api/auth/demo")));
       },
       logout: async () => {
         await client.POST("/api/auth/logout");

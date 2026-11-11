@@ -28,6 +28,8 @@ services:
       # Inside Docker the database is the `db` service, not localhost.
       DB_URL: jdbc:postgresql://db:5432/todo
       HTTP_PORT: "8080"
+      # The one-click demo account is handy locally; set DEMO_ENABLED=false in .env to turn it off.
+      DEMO_ENABLED: ${DEMO_ENABLED:-true}
     ports:
       - "127.0.0.1:${API_PORT:-8080}:8080"
     depends_on:

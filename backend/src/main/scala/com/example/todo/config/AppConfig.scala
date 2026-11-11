@@ -30,11 +30,19 @@ final case class LoginConfig(
   windowMinutes: Int = 15
 )
 
+/** A shared demo account visitors can enter with one click. Off unless `DEMO_ENABLED=true`. */
+final case class DemoConfig(
+  enabled: Boolean = false,
+  username: String = "demo",
+  resetIntervalHours: Int = 6
+)
+
 final case class AppConfig(
   http: HttpConfig,
   db: DbConfig,
   session: SessionConfig,
-  login: LoginConfig
+  login: LoginConfig,
+  demo: DemoConfig
 )
 
 object AppConfig:
@@ -47,6 +55,7 @@ object AppConfig:
         c.login.maxAttemptsPerAccount > 0 && c.login.maxAttemptsPerIp > 0 &&
           c.login.windowMinutes > 0
       )
+      .validate("DEMO_RESET_INTERVAL_HOURS must be positive")(_.demo.resetIntervalHours > 0)
 
   /** Reads the configuration from whatever `ConfigProvider` is installed: environment variables in
     * production (see `Main`), a plain map in tests.

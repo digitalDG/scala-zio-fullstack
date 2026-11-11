@@ -87,6 +87,20 @@ object Endpoints:
       .tag("auth")
       .summary("Sign out: end this session and clear the cookie")
 
+  val demoInfo: PublicEndpoint[Unit, ErrorResponse, DemoInfoResponse, Any] =
+    base.get
+      .in("auth" / "demo")
+      .out(jsonBody[DemoInfoResponse])
+      .tag("auth")
+      .summary("Whether the shared demo account is available")
+
+  val demoSignIn: PublicEndpoint[Unit, ErrorResponse, (CookieValueWithMeta, UserResponse), Any] =
+    base.post
+      .in("auth" / "demo")
+      .out(sessionCookie.and(jsonBody[UserResponse]))
+      .tag("auth")
+      .summary("Sign in to the shared demo account (404 if it isn't enabled)")
+
   val logoutEverywhere: Endpoint[Option[String], Unit, ErrorResponse, CookieValueWithMeta, Any] =
     secured.post
       .in("auth" / "logout-all")
@@ -188,6 +202,8 @@ object Endpoints:
     login,
     logout,
     logoutEverywhere,
+    demoInfo,
+    demoSignIn,
     me,
     listTodos,
     todoStats,

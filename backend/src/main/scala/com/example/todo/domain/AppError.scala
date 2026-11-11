@@ -25,4 +25,7 @@ object AppError:
 
   final case class TooManyRequests(message: String) extends AppError
 
+  /** The caller is signed in but isn't allowed to do this. */
+  final case class Forbidden(message: String) extends AppError
+
   def todoNotFound(id: TodoId): NotFound = NotFound(s"Todo ${id.value} not found")

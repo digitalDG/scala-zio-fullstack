@@ -77,13 +77,24 @@ final case class TodoListParams(
 
 // ---- Responses -------------------------------------------------------------------------------
 
-final case class UserResponse(id: Long, username: String, email: String, createdAt: Instant)
-    derives JsonCodec,
+/** `demo` is true for the shared demo account, so the UI can explain it and hide what it can't do.
+  */
+final case class UserResponse(
+  id: Long,
+  username: String,
+  email: String,
+  createdAt: Instant,
+  demo: Boolean
+) derives JsonCodec,
       Schema
 
 object UserResponse:
-  def from(user: User): UserResponse =
-    UserResponse(user.id.value, user.username.value, user.email.value, user.createdAt)
+  def from(user: User, demo: Boolean): UserResponse =
+    UserResponse(user.id.value, user.username.value, user.email.value, user.createdAt, demo)
+
+final case class DemoInfoResponse(enabled: Boolean, resetIntervalHours: Int)
+    derives JsonCodec,
+      Schema
 
 final case class TodoResponse(
   id: Long,
@@ -152,6 +163,7 @@ enum ErrorCode(val status: StatusCode):
   case NotFound         extends ErrorCode(StatusCode.NotFound)
   case Conflict         extends ErrorCode(StatusCode.Conflict)
   case TooManyRequests  extends ErrorCode(StatusCode.TooManyRequests)
+  case Forbidden        extends ErrorCode(StatusCode.Forbidden)
   case Internal         extends ErrorCode(StatusCode.InternalServerError)
 
 object ErrorCode extends LabeledEnum[ErrorCode]:
@@ -162,6 +174,7 @@ object ErrorCode extends LabeledEnum[ErrorCode]:
     case NotFound         => "not_found"
     case Conflict         => "conflict"
     case TooManyRequests  => "too_many_requests"
+    case Forbidden        => "forbidden"
     case Internal         => "internal_error"
   protected def typeName = "ErrorCode"
 
@@ -195,3 +208,4 @@ object ErrorResponse:
     case AppError.NotFound(message)        => ErrorResponse(ErrorCode.NotFound, message)
     case AppError.Conflict(message)        => ErrorResponse(ErrorCode.Conflict, message)
     case AppError.TooManyRequests(message) => ErrorResponse(ErrorCode.TooManyRequests, message)
+    case AppError.Forbidden(message)       => ErrorResponse(ErrorCode.Forbidden, message)

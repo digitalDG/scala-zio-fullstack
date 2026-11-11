@@ -44,7 +44,9 @@ lazy val root = project
       "-feature",
       "-unchecked",
       "-Wunused:all",
-      "-Wvalue-discard"
+      "-Wvalue-discard",
+      // A non-exhaustive match is a bug waiting to happen, so make it a compile error, not a warning.
+      "-Wconf:id=E029:error"
     ),
     libraryDependencies ++= Seq(
       // Effects & runtime
