@@ -49,6 +49,11 @@ browse the API at
 
 ## Architecture
 
+> For an in-depth walkthrough of the backend, with code excerpts, the
+> design decisions and a comparison of ZIO with Cats Effect,
+> Akka/Pekko and direct style, see the
+> [Architecture & Design Guide (PDF)](docs/architecture-guide.pdf).
+
 ```mermaid
 flowchart TB
     Browser[React app] -->|HTTP /api| Nginx
