@@ -24,5 +24,11 @@ WORKDIR /app
 COPY --from=build /app/target/scala-3.3.4/todo-backend.jar app.jar
 USER app
 
+# A fixed, small heap. Sizing it as a share of the container's memory would let the JVM grow to
+# fit whatever limit the host allows, and on usage-billed hosts that RAM is what you pay for.
+# The serial collector suits a small single-instance app; thread stacks are halved as well.
+# `java` reads JDK_JAVA_OPTIONS itself, so override it per environment without a rebuild.
+ENV JDK_JAVA_OPTIONS="-Xmx256m -XX:+UseSerialGC -Xss512k"
+
 EXPOSE 8080
-ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-jar", "app.jar"]

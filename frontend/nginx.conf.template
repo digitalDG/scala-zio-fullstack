@@ -1,7 +1,19 @@
+# Rendered at container start by the official nginx image: ${VAR} placeholders are replaced with
+# environment variables (only ones that are set; nginx's own $variables are left alone).
+#   PORT                   port to listen on (Railway sets it; defaults to 80)
+#   BACKEND_URL            where the API lives, e.g. http://backend:8080
+#   NGINX_LOCAL_RESOLVERS  the container's DNS servers, filled in by the image itself
+
 server {
-    listen 80;
+    listen ${PORT};
+    listen [::]:${PORT};
     root /usr/share/nginx/html;
     server_tokens off;
+
+    # Resolve the backend's address per request (cached 10s) rather than once at startup, so a
+    # backend redeploy with a new internal IP doesn't leave the proxy pointing at the old one.
+    resolver ${NGINX_LOCAL_RESOLVERS} valid=10s;
+    set $backend ${BACKEND_URL};
 
     # Defence in depth for every response.
     add_header X-Content-Type-Options "nosniff" always;
@@ -11,7 +23,7 @@ server {
     # The API and its Swagger docs are proxied, so the browser talks to a single origin (no CORS),
     # and the SameSite=Strict session cookie is always first-party.
     location /api/ {
-        proxy_pass http://backend:8080;
+        proxy_pass $backend;
         proxy_set_header Host $host;
         # Overwrite (not append) so a client can't fake its address to dodge sign-in limits.
         proxy_set_header X-Forwarded-For $remote_addr;
@@ -20,7 +32,7 @@ server {
     }
 
     location /docs {
-        proxy_pass http://backend:8080;
+        proxy_pass $backend;
     }
 
     # Hashed build assets never change, so they can be cached for a long time.

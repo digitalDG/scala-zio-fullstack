@@ -196,6 +196,69 @@ Leave `HTTP_SECURE_COOKIES` on. Browsers already accept secure
 cookies on `localhost`; it only needs turning off for a plain-HTTP
 host with another name.
 
+The images have two more settings of their own:
+
+| Variable           | Image    | Default |
+| ------------------ | -------- | ------- |
+| `JDK_JAVA_OPTIONS` | backend  | `-Xmx256m -XX:+UseSerialGC -Xss512k` |
+| `BACKEND_URL`      | frontend | `http://backend:8080` |
+| `PORT`             | frontend | `80` |
+
+The backend's heap is capped at a fixed size rather than a share
+of the container's memory, because on usage-billed hosts unused
+headroom still costs money.
+
+## Deploying to Railway
+
+The app runs on Railway as three services in one project. Only the
+frontend is public; the backend and database are reachable only on
+Railway's private network.
+
+```mermaid
+flowchart LR
+    Internet -->|HTTPS| Frontend[frontend<br/>Nginx]
+    Frontend -->|private network| Backend[backend<br/>Scala API]
+    Backend -->|private network| DB[(Postgres)]
+```
+
+1. **Create the project.** In Railway, choose *New Project →
+   Deploy from GitHub repo* and pick this repository. Rename the
+   service it creates to `backend`.
+2. **Configure `backend`** under *Settings*:
+   - Root Directory: `/backend` (Railway finds its `Dockerfile`)
+   - Watch Paths: `/backend/**`, so frontend changes don't rebuild it
+   - Healthcheck Path: `/api/health`
+   - No public domain
+3. **Add the database:** *+ New → Database → PostgreSQL*. Keep its
+   name, `Postgres`.
+4. **Set the backend's variables.** The `${{...}}` references pull
+   values from the Postgres service, so no password is ever typed
+   or stored in the repo:
+
+   ```
+   DB_URL=jdbc:postgresql://${{Postgres.PGHOST}}:${{Postgres.PGPORT}}/${{Postgres.PGDATABASE}}
+   DB_USER=${{Postgres.PGUSER}}
+   DB_PASSWORD=${{Postgres.PGPASSWORD}}
+   DB_MAX_POOL_SIZE=3
+   ```
+
+5. **Add the frontend:** *+ New → GitHub Repo*, same repository.
+   Rename it `frontend`, then set Root Directory `/frontend`,
+   Watch Paths `/frontend/**`, and this variable:
+
+   ```
+   BACKEND_URL=http://${{backend.RAILWAY_PRIVATE_DOMAIN}}:8080
+   ```
+
+6. **Make it public:** in the frontend's *Settings → Networking*,
+   generate a domain. Railway provides HTTPS, which the `Secure`
+   session cookie needs.
+7. **Cap spending:** set a usage limit in your workspace's billing
+   settings.
+
+Railway redeploys each service when its files change on `main`.
+Swagger UI is at `/docs` on the public domain.
+
 ## API
 
 Signing in sets the session cookie; the browser then sends it
