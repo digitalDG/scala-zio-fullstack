@@ -7,6 +7,10 @@ The backend is **Scala 3** with **ZIO 2**, **Tapir** and **Quill**
 on **PostgreSQL**. The frontend is **React + TypeScript**, with API
 types generated from the Scala code so the two can't drift apart.
 
+**Live demo: https://frontend-production-dc1a2c7f.up.railway.app**
+(register an account to try it, or browse the API at
+[`/docs`](https://frontend-production-dc1a2c7f.up.railway.app/docs))
+
 ![The todo list](docs/screenshot.png)
 
 ## Features
@@ -321,7 +325,7 @@ cd frontend && npm test
   Covers auth, the session cookie's security attributes, sign-out,
   CRUD, users being isolated from each other, filtering, paging
   and every error path.
-- **Repositories:** the actual SQL against PostgreSQL 16 in Docker,
+- **Repositories:** the actual SQL against PostgreSQL 18 in Docker,
   using Testcontainers. These skip themselves when Docker isn't
   running, and always run in CI.
 - **Frontend:** URL filter parsing, date logic, session handling

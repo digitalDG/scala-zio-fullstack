@@ -23,7 +23,7 @@ object PostgresRepositorySpec extends ZIOSpecDefault:
   private val postgres: TaskLayer[AppConfig] = ZLayer.scoped {
     ZIO
       .acquireRelease(ZIO.attemptBlocking {
-        val container = PostgreSQLContainer(DockerImageName.parse("postgres:16-alpine"))
+        val container = PostgreSQLContainer(DockerImageName.parse("postgres:18-alpine"))
         container.start()
         container
       })(container => ZIO.attemptBlocking(container.stop()).orDie)
